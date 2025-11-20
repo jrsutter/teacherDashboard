@@ -1,538 +1,293 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Classroom Dashboard — Multi-widget</title>
+  <title>Teacher Tools Dashboard</title>
 
-  <!-- jQuery & jQuery UI for draggable/resizable -->
+  <!-- jQuery + jQuery UI for draggable/resizable widgets -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
   <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"/>
 
   <style>
-    :root {
-      --toolbar-bg: #2f3b49;
-      --toolbar-fg: #fff;
-      --widget-border: #3b4a5a;
-      --accent: #3aa0a0;
-    }
-    body{
-      margin:0;
-      font-family: "Segoe UI", Roboto, Arial, sans-serif;
-      background: linear-gradient(180deg,#f2f7fb,#e9f1f6);
-      min-height:100vh;
+    body {
+      margin: 0;
+      background: #f0f0f0;
+      font-family: Arial, sans-serif;
+      overflow-x: hidden;
     }
 
-    .toolbar{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      padding:10px;
-      background:var(--toolbar-bg);
-      color:var(--toolbar-fg);
-      position:sticky;
-      top:0;
-      z-index:999;
+    /* Toolbar Styling */
+    #toolbar {
+      width: 100%;
+      background: #222;
+      color: white;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
     }
-    .toolbar button, .toolbar input, .toolbar select{
-      padding:8px 10px;
-      border-radius:6px;
+
+    .tool-btn {
+      background: #444;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 1px solid #333;
+      transition: 0.2s;
+      user-select: none;
+    }
+
+    .tool-btn:hover {
+      background: #666;
+    }
+
+    /* Widget Window */
+    .widget {
+      position: absolute;
+      padding: 10px;
+      background: white;
+      border: 2px solid #444;
+      border-radius: 5px;
+      width: 250px;
+      z-index: 50;
+    }
+
+    .widget-header {
+      background: #444;
+      color: white;
+      padding: 5px;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 3px 3px 0 0;
+    }
+
+    .widget-close {
+      cursor: pointer;
+      color: #ff6666;
+      font-weight: bold;
+    }
+
+    textarea.sticky {
+      width: 90%;
+      height: 120px;
       border: none;
-      cursor:pointer;
-      font-size:14px;
+      outline: none;
+      resize: none;
+      background: transparent;
+      font-size: 16px;
+      padding: 5px;
     }
-    .toolbar button{ background:#fff;color:#222; box-shadow:0 2px 6px rgba(0,0,0,0.12)}
-    .toolbar .link-btn{ background:#f7d488; }
-    .toolbar .manage-csv { background:#ffdede; }
-
-    /* widget shell */
-    .widget{
-      position:absolute;
-      width:320px;
-      min-width:220px;
-      background:#fff;
-      border:2px solid var(--widget-border);
-      border-radius:8px;
-      box-shadow: 0 6px 18px rgba(20,30,40,0.14);
-      overflow:visible;
-    }
-    .widget-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:8px 10px;
-      background:linear-gradient(90deg,var(--accent),#6377ff);
-      color:white;
-      cursor:move;
-      border-radius:6px 6px 0 0;
-    }
-    .widget-title{ font-weight:600; font-size:14px;}
-    .widget-controls{ display:flex; gap:6px; align-items:center; }
-    .widget-controls button{ background:transparent; border:none; color:white; cursor:pointer; padding:6px; border-radius:4px; }
-    .widget-content{ padding:10px; background:transparent; color:#222; min-height:60px; }
-
-    .close-btn{ background:#ff5d5d; border:none; color:white; padding:4px 8px; border-radius:6px; cursor:pointer;}
-    .min-btn{ background:rgba(255,255,255,0.18); padding:4px 8px; border-radius:6px; border:none; color:white; cursor:pointer; }
-
-    /* Sticky notes small styling */
-    .note{
-      width:200px;
-      min-height:120px;
-      padding:8px;
-      border-radius:8px;
-      box-shadow:0 4px 10px rgba(0,0,0,0.12);
-      resize:none;
-      overflow:auto;
-    }
-    .color-btn { padding:6px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.08); cursor:pointer; }
-
-    /* small utility */
-    .small { font-size:13px; }
-    .center { text-align:center; }
-    .inline { display:inline-block; vertical-align:middle; }
-
-    /* CSV manager area inside toolbar */
-    .csv-list { margin-left:8px; background:white; padding:6px 8px; border-radius:6px; display:flex; gap:6px; align-items:center; }
-    .csv-list input { width:180px; padding:6px; border-radius:6px; border:1px solid #ccc; }
-
-    /* responsive containment so widgets don't overflow viewport drastically */
-    @media (max-width:600px){ .widget { width:90%; min-width:200px; } }
   </style>
 </head>
 <body>
 
-  <div class="toolbar">
-    <button onclick="spawnTimer()">➕ Countdown</button>
-    <button onclick="spawnTimeUntil()">➕ Time-Until</button>
-    <button onclick="spawnStopwatch()">➕ Stopwatch</button>
-    <button onclick="spawnDice()">➕ Dice</button>
-    <button onclick="spawnStickyNote()">➕ Sticky Note</button>
-    <button onclick="spawnRandomPicker()">➕ Student Picker</button>
+<!-- Toolbar -->
+<div id="toolbar">
+  <div class="tool-btn" onclick="spawnStickyPicker()">Sticky Notes</div>
+  <div class="tool-btn" onclick="spawnStopwatch()">Stopwatch</div>
+  <div class="tool-btn" onclick="spawnCountdown()">Countdown</div>
+  <div class="tool-btn" onclick="spawnTimeUntil()">Time Until</div>
+  <div class="tool-btn" onclick="spawnDice()">Dice Roller</div>
+  <div class="tool-btn" onclick="spawnStudentPicker()">Student Picker</div>
 
-    <!-- Link to Google Dashboard -->
-    <button class="link-btn" onclick="window.open('https://script.google.com/macros/s/AKfycbzBXmIoTIx9gOI2OSRTln14EBfCN098SJjVf2dV4uiCMGGVyNQ1ZMlsuzrg2VxGMgM-/exec?page=Dashboard', '_blank')">Open Google Dashboard</button>
-
-    <!-- CSV manager: add filenames (repo files) and load -->
-    <div class="csv-list small">
-      <input id="csvFilename" placeholder="period1.csv" />
-      <button class="manage-csv" onclick="addCSV()">Add</button>
-      <button onclick="loadCSVFiles()">Load CSVs</button>
-      <select id="csvSelect" style="padding:6px;border-radius:6px;"></select>
-    </div>
+  <div class="tool-btn" onclick="window.open('https://script.google.com/macros/s/AKfycbzBXmIoTIx9gOI2OSRTln14EBfCN098SJjVf2dV4uiCMGGVyNQ1ZMlsuzrg2VxGMgM-/exec?page=Dashboard','_blank')">
+    Open Dashboard
   </div>
+</div>
 
 <script>
-/* ================================
-   GLOBAL WIDGET & CSV MANAGEMENT
-   ================================ */
-
-let widgetCount = 0;
-const widgetZBase = 100;
-let zTop = widgetZBase;
-
-let classLists = {}; // {"period1.csv": ["James","Maria",...], ... }
-let csvFilenames = JSON.parse(localStorage.getItem('dashboard_csv_filenames') || '["period1.csv","period2.csv","period3.csv"]');
-
-/* Keep CSV filenames input visible */
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('csvFilename').value = csvFilenames[0] || '';
-  populateCSVSelect();
-});
-
-/* Generic widget creator */
-function createWidget(title, innerHTML, opts = {}) {
-  widgetCount++;
-  const id = 'widget_' + widgetCount;
-  const widget = document.createElement('div');
-  widget.className = 'widget';
-  widget.id = id;
-  widget.style.left = (60 + (widgetCount * 22)) + 'px';
-  widget.style.top = (80 + (widgetCount * 18)) + 'px';
-  widget.style.zIndex = ++zTop;
-
-  widget.innerHTML = `
-    <div class="widget-header" onmousedown="bringToFront('${id}')">
-      <div class="widget-title">${title}</div>
-      <div class="widget-controls">
-        <button class="min-btn" onclick="toggleMin('${id')">—</button>
-        <button class="close-btn" onclick="closeWidget('${id}')">✕</button>
+/* ------------------------------
+   Utility to create widget base
+--------------------------------*/
+function createWidget(title) {
+  let box = $(`
+    <div class="widget">
+      <div class="widget-header">
+        <span>${title}</span>
+        <span class="widget-close">✖</span>
       </div>
+      <div class="widget-body"></div>
     </div>
-    <div class="widget-content">${innerHTML}</div>
-  `.replace("toggleMin('${id')", "toggleMin('" + id + "')").replace("closeWidget('${id')", "closeWidget('" + id + "')");
+  `);
 
-  document.body.appendChild(widget);
+  $("body").append(box);
 
-  // jQuery UI interactivity
-  $(widget).draggable({ handle: ".widget-header", containment: "window", start: () => bringToFront(id) }).resizable({ minHeight: 60, minWidth: 220 });
+  box.draggable({ handle: ".widget-header" }).resizable();
+  box.find(".widget-close").click(() => box.remove());
 
-  return widget;
+  // Random spawn position
+  box.css({ top: Math.random()*200 + 80, left: Math.random()*200 + 80 });
+
+  return box.find(".widget-body");
 }
 
-function bringToFront(id) {
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.style.zIndex = ++zTop;
+/* ------------------------------
+   Sticky Notes
+--------------------------------*/
+function spawnStickyPicker() {
+  let picker = createWidget("Choose Sticky Note Color");
+
+  picker.html(`
+    <button onclick="spawnSticky('yellow')">Yellow</button>
+    <button onclick="spawnSticky('pink')">Pink</button>
+    <button onclick="spawnSticky('blue')">Blue</button>
+    <button onclick="spawnSticky('green')">Green</button>
+  `);
 }
 
-function closeWidget(id) {
-  const el = document.getElementById(id);
-  if(el) el.remove();
-}
-
-function toggleMin(id) {
-  const el = document.getElementById(id);
-  if(!el) return;
-  const content = el.querySelector('.widget-content');
-  if(content.style.display === 'none') {
-    content.style.display = '';
-  } else {
-    content.style.display = 'none';
-  }
-}
-
-/* =========================
-   CSV / Student picker
-   ========================= */
-
-function populateCSVSelect(){
-  const sel = document.getElementById('csvSelect');
-  sel.innerHTML = '';
-  csvFilenames.forEach(fn => {
-    const opt = document.createElement('option');
-    opt.value = fn;
-    opt.textContent = fn;
-    sel.appendChild(opt);
+function spawnSticky(color) {
+  let body = createWidget("Sticky Note");
+  body.parent().css({
+    background: color,
+    width: "220px",
+    height: "200px"
   });
+  body.html(`<textarea class="sticky"></textarea>`);
 }
 
-function addCSV(){
-  const val = document.getElementById('csvFilename').value.trim();
-  if(!val) return alert('Enter a filename like period1.csv');
-  if(!csvFilenames.includes(val)) csvFilenames.push(val);
-  localStorage.setItem('dashboard_csv_filenames', JSON.stringify(csvFilenames));
-  populateCSVSelect();
-  alert('Added: ' + val + '\nNow click Load CSVs to fetch it from your repo root.');
+/* ------------------------------
+   Stopwatch
+--------------------------------*/
+function spawnStopwatch() {
+  let body = createWidget("Stopwatch");
+  body.html(`
+    <div id="swTime">00:00:00</div>
+    <button onclick="startSW(this)">Start</button>
+    <button onclick="pauseSW()">Pause</button>
+    <button onclick="resetSW()">Reset</button>
+  `);
 }
 
-async function loadCSVFiles(){
-  // tries to fetch each file from repo root; CSV must be in same repo and publicly available (GitHub Pages)
-  classLists = {};
-  const failures = [];
-  for(const fn of csvFilenames){
-    try{
-      const resp = await fetch(fn);
-      if(!resp.ok) { failures.push(fn); continue; }
-      const text = await resp.text();
-      const rows = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-      classLists[fn] = rows;
-    } catch(e){
-      failures.push(fn);
-    }
-  }
-  populateCSVSelect(); // ensure list up to date
-  if(Object.keys(classLists).length === 0){
-    alert('No CSVs loaded. Put the CSV files in the repo root and make sure the filenames match. Default filenames are period1.csv, period2.csv, period3.csv');
-  } else {
-    alert('Loaded: ' + Object.keys(classLists).join(', '));
-  }
+let swInterval, swTime = 0;
+
+function startSW(btn){
+  if(swInterval) return;
+  swInterval = setInterval(() => {
+    swTime++;
+    document.querySelector("#swTime").innerText =
+      new Date(swTime * 1000).toISOString().substr(11, 8);
+  }, 1000);
 }
 
-/* Random student picker widget */
-function spawnRandomPicker(){
-  const html = `
-    <div style="display:flex;gap:8px;align-items:center;">
-      <select id="pickerCSV" style="flex:1;padding:6px;border-radius:6px;">
-        ${csvFilenames.map(fn => `<option value="${fn}">${fn}</option>`).join('')}
-      </select>
-      <button onclick="pickRandom(this)">Pick</button>
-    </div>
-    <div style="margin-top:10px;">
-      <div id="pickerResult" style="font-size:20px;font-weight:700;color:#2b6b6b; min-height:28px"></div>
-    </div>
-    <div style="margin-top:6px;">
-      <small class="small">Tip: add CSV filenames using the toolbar and click Load CSVs.</small>
-    </div>
-  `;
-  createWidget('Random Student Picker', html);
+function pauseSW(){ clearInterval(swInterval); swInterval = null; }
+function resetSW(){
+  swTime = 0;
+  document.querySelector("#swTime").innerText = "00:00:00";
 }
 
-function pickRandom(btn){
-  const widget = btn.closest('.widget');
-  const sel = widget.querySelector('#pickerCSV');
-  const filename = sel.value;
-  const arr = classLists[filename] || [];
-  if(!arr || arr.length === 0){
-    widget.querySelector('#pickerResult').textContent = 'No students loaded for ' + filename;
-    return;
-  }
-  const pick = arr[Math.floor(Math.random() * arr.length)];
-  widget.querySelector('#pickerResult').textContent = pick;
+/* ------------------------------
+   Countdown
+--------------------------------*/
+function spawnCountdown(){
+  let body = createWidget("Countdown Timer");
+  body.html(`
+    <input id="cdInput" placeholder="2025-01-01 12:00" style="width:95%"><br><br>
+    <div id="cdOutput"></div>
+    <button onclick="startCountdown()">Start</button>
+  `);
 }
 
-/* =========================
-   Sticky notes
-   ========================= */
-
-const NOTE_COLORS = [
-  {name:'Yellow', css:'#fff49c'},
-  {name:'Pink', css:'#ffd6e0'},
-  {name:'Green', css:'#bffcc6'},
-  {name:'Blue', css:'#cfe9ff'},
-  {name:'Lavender', css:'#e9d7ff'}
-];
-
-function spawnStickyNote(){
-  const colorButtons = NOTE_COLORS.map(c => `<button class="color-btn" style="background:${c.css}" onclick="createNote('${c.css}')">${c.name}</button>`).join(' ');
-  const html = `
-    <div class="center small">Pick a color for new note:</div>
-    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${colorButtons}</div>
-    <div style="margin-top:8px"><small class="small">Notes are movable and resizable.</small></div>
-  `;
-  createWidget('Sticky Notes', html);
+function startCountdown(){
+  let end = new Date(document.querySelector("#cdInput").value);
+  setInterval(()=>{
+    let diff = end - new Date();
+    if(diff < 0){ document.querySelector("#cdOutput").innerText = "Done"; return; }
+    let s = Math.floor(diff/1000);
+    document.querySelector("#cdOutput").innerText =
+      `${Math.floor(s/3600)}h ${(Math.floor(s/60)%60)}m ${s%60}s`;
+  },1000);
 }
 
-function createNote(bg){
-  const noteHTML = `<div contenteditable="true" class="note" style="background:${bg}">New note...</div>`;
-  const node = createWidget('Note', noteHTML);
-  // convert the content element into a draggable/resizable note directly for easier UX
-  const noteEl = node.querySelector('.note');
-  $(noteEl).css({position:'absolute', left:'20px', top:'50px'}).draggable({ containment:"window" }).resizable();
-  // remove default widget chrome to treat it as a standalone note: keep close/minimize though
-  node.querySelector('.widget-content').style.padding = '6px';
-  // move note into body so it's on top and free-floating
-  document.body.appendChild(noteEl);
-  // remove the wrapper widget (we only want the note box)
-  node.remove();
-}
-
-/* =========================
-   Stopwatch widget
-   ========================= */
-
-function spawnStopwatch(){
-  const html = `
-    <div style="display:flex;gap:8px;align-items:center;">
-      <div id="sw_time" style="font-size:22px;font-weight:700;min-width:140px">00:00.000</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <button onclick="sw_start(this)">Start</button>
-        <button onclick="sw_stop(this)">Stop</button>
-        <button onclick="sw_reset(this)">Reset</button>
-      </div>
-    </div>
-    <div style="margin-top:8px;"><small class="small">Use Start / Stop / Reset. Laps are not stored in this simple version.</small></div>
-  `;
-  createWidget('Stopwatch', html);
-}
-
-let sw_interval = null;
-let sw_start_ts = 0;
-let sw_acc = 0;
-
-function sw_updateDisplay(el, ms){
-  const total = ms;
-  const minutes = Math.floor(total / 60000);
-  const seconds = Math.floor((total % 60000) / 1000);
-  const millis = total % 1000;
-  el.textContent = `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(millis).padStart(3,'0')}`;
-}
-
-function sw_start(btn){
-  const widget = btn.closest('.widget');
-  const display = widget.querySelector('#sw_time');
-  if(sw_interval) return;
-  sw_start_ts = performance.now();
-  sw_interval = setInterval(() => {
-    const now = performance.now();
-    const elapsed = sw_acc + Math.floor(now - sw_start_ts);
-    sw_updateDisplay(display, elapsed);
-  }, 30);
-}
-
-function sw_stop(btn){
-  if(!sw_interval) return;
-  clearInterval(sw_interval);
-  sw_interval = null;
-  const now = performance.now();
-  sw_acc += Math.floor(now - sw_start_ts);
-}
-
-function sw_reset(btn){
-  if(sw_interval) { clearInterval(sw_interval); sw_interval = null; }
-  sw_acc = 0; sw_start_ts = 0;
-  const widget = btn.closest('.widget');
-  const display = widget.querySelector('#sw_time');
-  sw_updateDisplay(display, 0);
-}
-
-/* =========================
-   Countdown widget (to date/time)
-   ========================= */
-
-function spawnTimer(){
-  const html = `
-    <div style="display:flex;gap:8px;flex-direction:column;">
-      <input placeholder="YYYY-MM-DD HH:MM (24hr) or YYYY-MM-DD" id="countdown_input" />
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <button onclick="startCountdown(this)">Start</button>
-        <button onclick="stopCountdown(this)">Stop</button>
-      </div>
-      <div style="margin-top:8px"><div id="countdown_out" style="font-weight:700"></div></div>
-    </div>
-  `;
-  createWidget('Countdown (to a date/time)', html);
-}
-
-let countdownIntervals = {};
-
-function startCountdown(btn){
-  const widget = btn.closest('.widget');
-  const inpt = widget.querySelector('#countdown_input').value.trim();
-  const out = widget.querySelector('#countdown_out');
-  if(!inpt){ out.textContent = 'Enter a date/time'; return; }
-  const target = new Date(inpt);
-  if(isNaN(target.getTime())){ out.textContent = 'Invalid date format'; return; }
-
-  const id = widget.id;
-  if(countdownIntervals[id]) clearInterval(countdownIntervals[id]);
-
-  function tick(){
-    const diff = target - new Date();
-    if(diff <= 0){ out.textContent = 'Done!'; clearInterval(countdownIntervals[id]); return; }
-    const d = Math.floor(diff / (24*60*60*1000));
-    const h = Math.floor(diff / (60*60*1000)) % 24;
-    const m = Math.floor(diff / (60*1000)) % 60;
-    const s = Math.floor(diff / 1000) % 60;
-    out.textContent = (d? d + 'd ': '') + `${h}h ${m}m ${s}s`;
-  }
-  tick();
-  countdownIntervals[id] = setInterval(tick, 1000);
-}
-
-function stopCountdown(btn){
-  const widget = btn.closest('.widget');
-  const id = widget.id;
-  if(countdownIntervals[id]){ clearInterval(countdownIntervals[id]); delete countdownIntervals[id]; }
-}
-
-/* =========================
-   Time-until widget (specific time AM/PM)
-   ========================= */
-
+/* ------------------------------
+   Time Until Widget
+--------------------------------*/
 function spawnTimeUntil(){
-  const html = `
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <input id="time_until_input" placeholder="e.g., 3:30 PM or 07:45 AM" />
-      <div style="display:flex;gap:8px">
-        <button onclick="startTimeUntil(this)">Start</button>
-        <button onclick="stopTimeUntil(this)">Stop</button>
-      </div>
-      <div style="margin-top:6px"><div id="time_until_out" style="font-weight:700"></div></div>
-    </div>
-  `;
-  createWidget('Time-Until (AM/PM)', html);
+  let body = createWidget("Time Until");
+  body.html(`
+    <input id="tuInput" placeholder="2:15 PM" style="width:95%"><br><br>
+    <div id="tuOutput"></div>
+    <button onclick="startTimeUntil()">Start</button>
+  `);
 }
 
-let timeUntilIntervals = {};
+function startTimeUntil() {
+  let input = document.querySelector("#tuInput").value;
+  let target = new Date();
+  let parsed = new Date(target.toDateString() + " " + input);
 
-function parseTimeAMPM(str){
-  // Parse times like "3:30 PM", "12:00 AM", "07:45", "7 PM"
-  str = str.trim();
-  const m = str.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?$/);
-  if(!m) return null;
-  let hh = parseInt(m[1],10);
-  let mm = m[2]? parseInt(m[2],10) : 0;
-  const ampm = m[3] ? m[3].toLowerCase() : null;
-  if(ampm){
-    if(ampm === 'pm' && hh !== 12) hh += 12;
-    if(ampm === 'am' && hh === 12) hh = 0;
-  }
-  return {hh,mm};
+  if (parsed < new Date()) parsed.setDate(parsed.getDate() + 1);
+
+  setInterval(() => {
+    let diff = parsed - new Date();
+    let s = Math.floor(diff / 1000);
+    document.querySelector("#tuOutput").innerText =
+      `${Math.floor(s/3600)}h ${(Math.floor(s/60)%60)}m ${s%60}s`;
+  }, 1000);
 }
 
-function startTimeUntil(btn){
-  const widget = btn.closest('.widget');
-  const inpt = widget.querySelector('#time_until_input').value.trim();
-  const out = widget.querySelector('#time_until_out');
-  const parsed = parseTimeAMPM(inpt);
-  if(!parsed){ out.textContent = 'Invalid time format'; return; }
-
-  const id = widget.id;
-  if(timeUntilIntervals[id]) clearInterval(timeUntilIntervals[id]);
-
-  function tick(){
-    const now = new Date();
-    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parsed.hh, parsed.mm, 0, 0);
-    if(target - now <= 0){
-      // time today has passed -> next day
-      target.setDate(target.getDate() + 1);
-    }
-    const diff = target - now;
-    const h = Math.floor(diff / (60*60*1000));
-    const m = Math.floor(diff / (60*1000)) % 60;
-    const s = Math.floor(diff / 1000) % 60;
-    out.textContent = `${h}h ${m}m ${s}s (until ${('0'+((parsed.hh%12)||12)).slice(-2)}:${('0'+parsed.mm).slice(-2)} ${parsed.hh>=12? 'PM':'AM'})`;
-  }
-  tick();
-  timeUntilIntervals[id] = setInterval(tick, 1000);
-}
-
-function stopTimeUntil(btn){
-  const widget = btn.closest('.widget');
-  const id = widget.id;
-  if(timeUntilIntervals[id]){ clearInterval(timeUntilIntervals[id]); delete timeUntilIntervals[id]; }
-}
-
-/* =========================
-   Dice widget (simple)
-   ========================= */
-
+/* ------------------------------
+   Dice Roller
+--------------------------------*/
 function spawnDice(){
-  const html = `
-    <div style="display:flex;gap:8px;align-items:center">
-      <select id="dice_type">
-        <option value="6">d6</option>
-        <option value="4">d4</option>
-        <option value="8">d8</option>
-        <option value="10">d10</option>
-        <option value="12">d12</option>
-        <option value="20">d20</option>
-      </select>
-      <input id="dice_count" value="1" style="width:46px;padding:6px;border-radius:6px;border:1px solid #ccc"/>
-      <button onclick="rollDice(this)">Roll</button>
-    </div>
-    <div style="margin-top:8px"><div id="dice_out" style="font-weight:700"></div></div>
-  `;
-  createWidget('Dice Roller', html);
+  let body = createWidget("Dice Roller");
+  body.html(`
+    <div id="diceOut" style="font-size:40px">🎲</div>
+    <button onclick="rollDice()">Roll</button>
+  `);
+}
+function rollDice(){
+  document.querySelector("#diceOut").innerText = Math.floor(Math.random()*6)+1;
 }
 
-function rollDice(btn){
-  const widget = btn.closest('.widget');
-  const type = parseInt(widget.querySelector('#dice_type').value,10);
-  const count = Math.max(1, Math.min(20, parseInt(widget.querySelector('#dice_count').value,10) || 1));
-  const results = [];
-  for(let i=0;i<count;i++){
-    results.push(Math.floor(Math.random()*type) + 1);
-  }
-  widget.querySelector('#dice_out').textContent = results.join(', ');
+/* ------------------------------
+   Student Picker
+--------------------------------*/
+function spawnStudentPicker(){
+  let body = createWidget("Random Student Picker");
+  body.html(`
+    <select id="classSelect"></select><br><br>
+    <button onclick="loadClasses()">Load CSVs</button><br><br>
+    <button onclick="pickStudent()">Pick Student</button><br><br>
+    <div id="studentOut"></div>
+  `);
 }
 
-/* =========================
-   UTIL: quick load default CSVs on first visit attempt
-   ========================= */
+async function loadClasses(){
+  let files = ["period1.csv","period2.csv","period3.csv"];
+  let select = document.querySelector("#classSelect");
 
-(async function tryAutoLoad(){
-  // Try default files if localStorage is empty and the page is on GitHub Pages (same origin)
-  if(csvFilenames && csvFilenames.length){
-    // do not auto-fetch unless the user clicks Load CSVs — keep it manual to avoid console noise
-    // but we will attempt to fetch the first one silently to give feedback in console
+  select.innerHTML = "";
+
+  for(let file of files){
     try{
-      const resp = await fetch(csvFilenames[0]);
-      if(resp.ok) console.info('Found default CSV:', csvFilenames[0]);
-    }catch(e){}
+      let r = await fetch(file);
+      if(r.ok){
+        let opt = document.createElement("option");
+        opt.value = file;
+        opt.text = file.replace(".csv","");
+        select.appendChild(opt);
+      }
+    } catch{}
   }
-})();
+}
 
+async function pickStudent(){
+  let file = document.querySelector("#classSelect").value;
+  let out = document.querySelector("#studentOut");
+
+  if(!file){ out.innerHTML = "Load CSV files first"; return; }
+
+  let r = await fetch(file);
+  let txt = await r.text();
+  let names = txt.split("\n").map(s=>s.trim()).filter(s=>s);
+
+  out.innerHTML = names[Math.floor(Math.random()*names.length)];
+}
 </script>
+
 </body>
 </html>
